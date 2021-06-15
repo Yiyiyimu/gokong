@@ -1,3 +1,5 @@
+// +build all community
+
 package gokong
 
 import (
@@ -32,7 +34,6 @@ func Test_PluginsGetById(t *testing.T) {
 }
 
 func Test_PluginsGetNonExistentById(t *testing.T) {
-
 	result, err := NewClient(NewDefaultConfig()).Plugins().GetById("cc8e128c-c38d-421c-93cd-b045f64d5d44")
 
 	assert.Nil(t, err)
@@ -60,7 +61,6 @@ func Test_PluginsCreateForAll(t *testing.T) {
 	err = client.Plugins().DeleteById(createdPlugin.Id)
 
 	assert.Nil(t, err)
-
 }
 
 func Test_PluginsCreateForAll_ExplicitEnabled(t *testing.T) {
@@ -85,7 +85,6 @@ func Test_PluginsCreateForAll_ExplicitEnabled(t *testing.T) {
 	err = client.Plugins().DeleteById(createdPlugin.Id)
 
 	assert.Nil(t, err)
-
 }
 
 func Test_PluginsCreateForAll_Disabled(t *testing.T) {
@@ -110,11 +109,9 @@ func Test_PluginsCreateForAll_Disabled(t *testing.T) {
 	err = client.Plugins().DeleteById(createdPlugin.Id)
 
 	assert.Nil(t, err)
-
 }
 
 func Test_PluginsCreateForASpecificConsumer(t *testing.T) {
-
 	consumerRequest := &ConsumerRequest{
 		Username: "username-" + uuid.NewV4().String(),
 		CustomId: "test-" + uuid.NewV4().String(),
@@ -148,11 +145,9 @@ func Test_PluginsCreateForASpecificConsumer(t *testing.T) {
 	err = client.Plugins().DeleteById(createdPlugin.Id)
 
 	assert.Nil(t, err)
-
 }
 
 func Test_PluginsCreateForASpecificService(t *testing.T) {
-
 	serviceRequest := &ServiceRequest{
 		Name:     String(fmt.Sprintf("service-%s", uuid.NewV4().String())),
 		Protocol: String("http"),
@@ -194,7 +189,6 @@ func Test_PluginsCreateForASpecificService(t *testing.T) {
 }
 
 func Test_PluginsCreateForASpecificRoute(t *testing.T) {
-
 	serviceRequest := &ServiceRequest{
 		Name:     String(fmt.Sprintf("service-%s", uuid.NewV4().String())),
 		Protocol: String("http"),
@@ -252,11 +246,9 @@ func Test_PluginsCreateForASpecificRoute(t *testing.T) {
 	err = client.Services().DeleteServiceById(*createdService.Id)
 
 	assert.Nil(t, err)
-
 }
 
 func Test_PluginsCreatePluginNonExistant(t *testing.T) {
-
 	pluginRequest := &PluginRequest{
 		Name: "non-existant-plugin",
 		Config: map[string]interface{}{
@@ -268,11 +260,9 @@ func Test_PluginsCreatePluginNonExistant(t *testing.T) {
 
 	assert.NotNil(t, err)
 	assert.Nil(t, result)
-
 }
 
 func Test_PluginsCreatePluginInvalid(t *testing.T) {
-
 	pluginRequest := &PluginRequest{
 		Name:    "rate-limiting",
 		RouteId: ToId("123"),
@@ -285,7 +275,6 @@ func Test_PluginsCreatePluginInvalid(t *testing.T) {
 
 	assert.NotNil(t, err)
 	assert.Nil(t, result)
-
 }
 
 func Test_PluginsUpdate(t *testing.T) {
@@ -322,11 +311,9 @@ func Test_PluginsUpdate(t *testing.T) {
 	err = client.Plugins().DeleteById(createdPlugin.Id)
 
 	assert.Nil(t, err)
-
 }
 
 func Test_PluginsUpdateInvalid(t *testing.T) {
-
 	pluginRequest := &PluginRequest{
 		Name: "request-size-limiting",
 		Config: map[string]interface{}{
@@ -372,7 +359,6 @@ func Test_PluginsDelete(t *testing.T) {
 
 	plugin, err := client.Plugins().GetById(createdPlugin.Id)
 	assert.Nil(t, plugin)
-
 }
 
 func Test_PluginsList(t *testing.T) {
@@ -413,7 +399,6 @@ func Test_PluginsList(t *testing.T) {
 
 	err = client.Plugins().DeleteById(createdPlugin2.Id)
 	assert.Nil(t, err)
-
 }
 
 func Test_PluginsGetByConsumerId(t *testing.T) {
@@ -451,7 +436,6 @@ func Test_PluginsGetByConsumerId(t *testing.T) {
 }
 
 func Test_PluginsGetByRouteId(t *testing.T) {
-
 	serviceRequest := &ServiceRequest{
 		Name:     String(fmt.Sprintf("service-%s", uuid.NewV4().String())),
 		Protocol: String("http"),
@@ -512,7 +496,6 @@ func Test_PluginsGetByRouteId(t *testing.T) {
 }
 
 func Test_PluginsGetByServiceId(t *testing.T) {
-
 	serviceRequest := &ServiceRequest{
 		Name:     String(fmt.Sprintf("service-%s", uuid.NewV4().String())),
 		Protocol: String("http"),
@@ -552,4 +535,51 @@ func Test_PluginsGetByServiceId(t *testing.T) {
 	err = client.Services().DeleteServiceById(*createdService.Id)
 
 	assert.Nil(t, err)
+}
+
+func Test_UpdatePluginShouldReturnErrorWhenBadRequest(t *testing.T) {
+	pluginRequest := &PluginRequest{
+		Name: "rate-limiting",
+		Config: map[string]interface{}{
+			"minute": float64(20),
+			"hour":   float64(500),
+		},
+	}
+
+	client := NewClient(NewDefaultConfig())
+	createdPlugin, err := client.Plugins().Create(pluginRequest)
+
+	assert.Nil(t, err)
+	assert.NotNil(t, createdPlugin)
+	assert.Equal(t, pluginRequest.Config["minute"].(float64), createdPlugin.Config["minute"].(float64))
+	assert.Equal(t, pluginRequest.Config["hour"].(float64), createdPlugin.Config["hour"].(float64))
+
+	pluginRequest.Config = map[string]interface{}{
+		"minute": String("invalid-format"),
+		"hour":   float64(123),
+	}
+
+	result, err := client.Plugins().UpdateById(createdPlugin.Id, pluginRequest)
+
+	expectedErrorMessage := "bad request, message from kong: {\"message\":\"schema violation (config.minute: expected a number)\",\"name\":\"schema violation\",\"fields\":{\"config\":{\"minute\":\"expected a number\"}},\"code\":2}"
+
+	assert.Nil(t, result)
+	assert.NotNil(t, err)
+	assert.Equal(t, expectedErrorMessage, err.Error())
+}
+
+func Test_CreatePluginShouldReturnErrorWhenBadRequest(t *testing.T) {
+	pluginRequest := &PluginRequest{
+		Name:    "rate-limiting",
+		RouteId: ToId("123"),
+		Config: map[string]interface{}{
+			"some-setting": 20,
+		},
+	}
+
+	result, err := NewClient(NewDefaultConfig()).Plugins().Create(pluginRequest)
+	assert.Nil(t, result)
+	assert.NotNil(t, err)
+	assert.Contains(t, err.Error(), "bad request, message from kong")
+	assert.Contains(t, err.Error(), "3 schema violations (at least one of these fields must be non-empty")
 }

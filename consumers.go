@@ -5,7 +5,22 @@ import (
 	"fmt"
 )
 
-type ConsumerClient struct {
+type ConsumerClient interface {
+	GetByUsername(username string) (*Consumer, error)
+	GetById(id string) (*Consumer, error)
+	Create(consumerRequest *ConsumerRequest) (*Consumer, error)
+	List(query *ConsumerQueryString) ([]*Consumer, error)
+	DeleteByUsername(username string) error
+	DeleteById(id string) error
+	UpdateByUsername(username string, consumerRequest *ConsumerRequest) (*Consumer, error)
+	UpdateById(id string, consumerRequest *ConsumerRequest) (*Consumer, error)
+	CreatePluginConfig(consumerId string, pluginName string, pluginConfig string) (*ConsumerPluginConfig, error)
+	GetPluginConfig(consumerId string, pluginName string, id string) (*ConsumerPluginConfig, error)
+	GetPluginConfigs(consumerId string, pluginName string) ([]map[string]interface{}, error)
+	DeletePluginConfig(consumerId string, pluginName string, id string) error
+}
+
+type consumerClient struct {
 	config *Config
 }
 
@@ -18,13 +33,19 @@ type ConsumerRequest struct {
 type Consumer struct {
 	Id       string    `json:"id,omitempty" yaml:"id,omitempty"`
 	CustomId string    `json:"custom_id,omitempty" yaml:"custom_id,omitempty"`
-	Username string    `json:"username,omitempty" yaml:"custom_id,omitempty"`
+	Username string    `json:"username,omitempty" yaml:"username,omitempty"`
 	Tags     []*string `json:"tags,omitempty" yaml:"tags,omitempty"`
 }
 
 type Consumers struct {
-	Results []*Consumer `json:"data,omitempty" yaml:"data,omitempty"`
-	Next    string      `json:"next,omitempty" yaml:"next,omitempty"`
+	Data   []*Consumer `json:"data,omitempty" yaml:"data,omitempty"`
+	Next   string      `json:"next,omitempty" yaml:"next,omitempty"`
+	Offset string      `json:"offset,omitempty" yaml:"offset,omitempty"`
+}
+
+type ConsumerQueryString struct {
+	Offset string `json:"offset,omitempty"`
+	Size   int    `json:"size"`
 }
 
 type ConsumerPluginConfig struct {
@@ -32,15 +53,20 @@ type ConsumerPluginConfig struct {
 	Body string
 }
 
+type ConsumerPluginConfigs struct {
+	Data   []map[string]interface{} `json:"data,omitempty" yaml:"data,omitempty"`
+	Next   string                   `json:"next,omitempty" yaml:"next,omitempty"`
+	Offset string                   `json:"offset,omitempty" yaml:"offset,omitempty"`
+}
+
 const ConsumersPath = "/consumers/"
 
-func (consumerClient *ConsumerClient) GetByUsername(username string) (*Consumer, error) {
+func (consumerClient *consumerClient) GetByUsername(username string) (*Consumer, error) {
 	return consumerClient.GetById(username)
 }
 
-func (consumerClient *ConsumerClient) GetById(id string) (*Consumer, error) {
-
-	r, body, errs := newGet(consumerClient.config, consumerClient.config.HostAddress+ConsumersPath+id).End()
+func (consumerClient *consumerClient) GetById(id string) (*Consumer, error) {
+	r, body, errs := newGet(consumerClient.config, ConsumersPath+id).End()
 	if errs != nil {
 		return nil, fmt.Errorf("could not get consumer, error: %v", errs)
 	}
@@ -62,9 +88,8 @@ func (consumerClient *ConsumerClient) GetById(id string) (*Consumer, error) {
 	return consumer, nil
 }
 
-func (consumerClient *ConsumerClient) Create(consumerRequest *ConsumerRequest) (*Consumer, error) {
-
-	r, body, errs := newPost(consumerClient.config, consumerClient.config.HostAddress+ConsumersPath).Send(consumerRequest).End()
+func (consumerClient *consumerClient) Create(consumerRequest *ConsumerRequest) (*Consumer, error) {
+	r, body, errs := newPost(consumerClient.config, ConsumersPath).Send(consumerRequest).End()
 	if errs != nil {
 		return nil, fmt.Errorf("could not create new consumer, error: %v", errs)
 	}
@@ -86,33 +111,51 @@ func (consumerClient *ConsumerClient) Create(consumerRequest *ConsumerRequest) (
 	return createdConsumer, nil
 }
 
-func (consumerClient *ConsumerClient) List() (*Consumers, error) {
+func (consumerClient *consumerClient) List(query *ConsumerQueryString) ([]*Consumer, error) {
+	consumers := make([]*Consumer, 0)
 
-	r, body, errs := newGet(consumerClient.config, consumerClient.config.HostAddress+ConsumersPath).End()
-	if errs != nil {
-		return nil, fmt.Errorf("could not get consumers, error: %v", errs)
+	if query.Size < 100 {
+		query.Size = 100
 	}
 
-	if r.StatusCode == 401 || r.StatusCode == 403 {
-		return nil, fmt.Errorf("not authorised, message from kong: %s", body)
+	if query.Size > 1000 {
+		query.Size = 1000
 	}
 
-	consumers := &Consumers{}
-	err := json.Unmarshal([]byte(body), consumers)
-	if err != nil {
-		return nil, fmt.Errorf("could not parse consumers list response, error: %v", err)
+	for {
+		data := &Consumers{}
+
+		r, body, errs := newGet(consumerClient.config, ConsumersPath).Query(*query).End()
+		if errs != nil {
+			return nil, fmt.Errorf("could not get the consumer, error: %v", errs)
+		}
+
+		if r.StatusCode == 401 || r.StatusCode == 403 {
+			return nil, fmt.Errorf("not authorised, message from kong: %s", body)
+		}
+
+		err := json.Unmarshal([]byte(body), data)
+		if err != nil {
+			return nil, fmt.Errorf("could not parse consumer get response, error: %v", err)
+		}
+
+		consumers = append(consumers, data.Data...)
+		if data.Next == "" {
+			break
+		}
+
+		query.Offset = data.Offset
 	}
 
 	return consumers, nil
 }
 
-func (consumerClient *ConsumerClient) DeleteByUsername(username string) error {
+func (consumerClient *consumerClient) DeleteByUsername(username string) error {
 	return consumerClient.DeleteById(username)
 }
 
-func (consumerClient *ConsumerClient) DeleteById(id string) error {
-
-	r, body, errs := newDelete(consumerClient.config, consumerClient.config.HostAddress+ConsumersPath+id).End()
+func (consumerClient *consumerClient) DeleteById(id string) error {
+	r, body, errs := newDelete(consumerClient.config, ConsumersPath+id).End()
 	if errs != nil {
 		return fmt.Errorf("could not delete consumer, result: %v error: %v", r, errs)
 	}
@@ -124,13 +167,12 @@ func (consumerClient *ConsumerClient) DeleteById(id string) error {
 	return nil
 }
 
-func (consumerClient *ConsumerClient) UpdateByUsername(username string, consumerRequest *ConsumerRequest) (*Consumer, error) {
+func (consumerClient *consumerClient) UpdateByUsername(username string, consumerRequest *ConsumerRequest) (*Consumer, error) {
 	return consumerClient.UpdateById(username, consumerRequest)
 }
 
-func (consumerClient *ConsumerClient) UpdateById(id string, consumerRequest *ConsumerRequest) (*Consumer, error) {
-
-	r, body, errs := newPatch(consumerClient.config, consumerClient.config.HostAddress+ConsumersPath+id).Send(consumerRequest).End()
+func (consumerClient *consumerClient) UpdateById(id string, consumerRequest *ConsumerRequest) (*Consumer, error) {
+	r, body, errs := newPatch(consumerClient.config, ConsumersPath+id).Send(consumerRequest).End()
 	if errs != nil {
 		return nil, fmt.Errorf("could not update consumer, error: %v", errs)
 	}
@@ -152,9 +194,8 @@ func (consumerClient *ConsumerClient) UpdateById(id string, consumerRequest *Con
 	return updatedConsumer, nil
 }
 
-func (consumerClient *ConsumerClient) CreatePluginConfig(consumerId string, pluginName string, pluginConfig string) (*ConsumerPluginConfig, error) {
-
-	r, body, errs := newPost(consumerClient.config, consumerClient.config.HostAddress+ConsumersPath+consumerId+"/"+pluginName).Send(pluginConfig).End()
+func (consumerClient *consumerClient) CreatePluginConfig(consumerId string, pluginName string, pluginConfig string) (*ConsumerPluginConfig, error) {
+	r, body, errs := newPost(consumerClient.config, ConsumersPath+consumerId+"/"+pluginName).Send(pluginConfig).End()
 	if errs != nil {
 		return nil, fmt.Errorf("could not configure plugin for consumer, error: %v", errs)
 	}
@@ -178,9 +219,8 @@ func (consumerClient *ConsumerClient) CreatePluginConfig(consumerId string, plug
 	return createdConsumerPluginConfig, nil
 }
 
-func (consumerClient *ConsumerClient) GetPluginConfig(consumerId string, pluginName string, id string) (*ConsumerPluginConfig, error) {
-
-	r, body, errs := newGet(consumerClient.config, consumerClient.config.HostAddress+ConsumersPath+consumerId+"/"+pluginName+"/"+id).End()
+func (consumerClient *consumerClient) GetPluginConfig(consumerId string, pluginName string, id string) (*ConsumerPluginConfig, error) {
+	r, body, errs := newGet(consumerClient.config, ConsumersPath+consumerId+"/"+pluginName+"/"+id).End()
 	if errs != nil {
 		return nil, fmt.Errorf("could not get plugin config for consumer, error: %v", errs)
 	}
@@ -204,9 +244,30 @@ func (consumerClient *ConsumerClient) GetPluginConfig(consumerId string, pluginN
 	return consumerPluginConfig, nil
 }
 
-func (consumerClient *ConsumerClient) DeletePluginConfig(consumerId string, pluginName string, id string) error {
+func (consumerClient *consumerClient) GetPluginConfigs(consumerId string, pluginName string) ([]map[string]interface{}, error) {
+	r, body, errs := newGet(consumerClient.config, ConsumersPath+consumerId+"/"+pluginName).End()
+	if errs != nil {
+		return nil, fmt.Errorf("could not get plugin config for consumer, error: %v", errs)
+	}
 
-	r, body, errs := newDelete(consumerClient.config, consumerClient.config.HostAddress+ConsumersPath+consumerId+"/"+pluginName+"/"+id).End()
+	if r.StatusCode == 401 || r.StatusCode == 403 {
+		return nil, fmt.Errorf("not authorised, message from kong: %s", body)
+	}
+
+	consumerPluginConfigs := &ConsumerPluginConfigs{}
+	err := json.Unmarshal([]byte(body), consumerPluginConfigs)
+	if err != nil {
+		return nil, fmt.Errorf("could not parse consumer plugin config response, error: %v", err)
+	}
+	if len(consumerPluginConfigs.Data) == 0 {
+		return nil, nil
+	}
+
+	return consumerPluginConfigs.Data, nil
+}
+
+func (consumerClient *consumerClient) DeletePluginConfig(consumerId string, pluginName string, id string) error {
+	r, body, errs := newDelete(consumerClient.config, ConsumersPath+consumerId+"/"+pluginName+"/"+id).End()
 	if errs != nil {
 		return fmt.Errorf("could not delete plugin config for consumer, error: %v", errs)
 	}

@@ -16,8 +16,22 @@ const EnvKongAdminPassword = "KONG_ADMIN_PASSWORD"
 const EnvKongTLSSkipVerify = "TLS_SKIP_VERIFY"
 const EnvKongApiKey = "KONG_API_KEY"
 const EnvKongAdminToken = "KONG_ADMIN_TOKEN"
+const EnvKongWorkspace = "KONG_ADMIN_WORKSPACE"
 
-type KongAdminClient struct {
+type KongAdminClient interface {
+	Status() StatusClient
+	Consumers() ConsumerClient
+	Plugins() PluginClient
+	Certificates() CertificateClient
+	Snis() SnisClient
+	Upstreams() UpstreamClient
+	Routes() RouteClient
+	Services() ServiceClient
+	Targets() TargetClient
+	Workspaces() WorkspaceClient
+}
+
+type kongAdminClient struct {
 	config *Config
 }
 
@@ -28,6 +42,7 @@ type Config struct {
 	InsecureSkipVerify bool
 	ApiKey             string
 	AdminToken         string
+	Workspace          string
 }
 
 func addQueryString(currentUrl string, filter interface{}) (string, error) {
@@ -56,6 +71,7 @@ func NewDefaultConfig() *Config {
 		Username:           "",
 		Password:           "",
 		InsecureSkipVerify: false,
+		Workspace:          "",
 	}
 
 	if os.Getenv(EnvKongAdminHostAddress) != "" {
@@ -79,67 +95,75 @@ func NewDefaultConfig() *Config {
 	if os.Getenv(EnvKongAdminToken) != "" {
 		config.AdminToken = os.Getenv(EnvKongAdminToken)
 	}
+	if os.Getenv(EnvKongWorkspace) != "" {
+		config.Workspace = os.Getenv(EnvKongWorkspace)
+	}
 
 	return config
 }
 
-func NewClient(config *Config) *KongAdminClient {
-	return &KongAdminClient{
+func NewClient(config *Config) *kongAdminClient {
+	return &kongAdminClient{
 		config: config,
 	}
 }
 
-func (kongAdminClient *KongAdminClient) Status() *StatusClient {
-	return &StatusClient{
-		config: kongAdminClient.config,
-	}
-
-}
-
-func (kongAdminClient *KongAdminClient) Consumers() *ConsumerClient {
-	return &ConsumerClient{
+func (kongAdminClient *kongAdminClient) Status() StatusClient {
+	return &statusClient{
 		config: kongAdminClient.config,
 	}
 }
 
-func (kongAdminClient *KongAdminClient) Plugins() *PluginClient {
-	return &PluginClient{
+func (kongAdminClient *kongAdminClient) Consumers() ConsumerClient {
+	return &consumerClient{
 		config: kongAdminClient.config,
 	}
 }
 
-func (kongAdminClient *KongAdminClient) Certificates() *CertificateClient {
-	return &CertificateClient{
+func (kongAdminClient *kongAdminClient) Plugins() PluginClient {
+	return &pluginClient{
 		config: kongAdminClient.config,
 	}
 }
 
-func (kongAdminClient *KongAdminClient) Snis() *SnisClient {
-	return &SnisClient{
+func (kongAdminClient *kongAdminClient) Certificates() CertificateClient {
+	return &certificateClient{
 		config: kongAdminClient.config,
 	}
 }
 
-func (kongAdminClient *KongAdminClient) Upstreams() *UpstreamClient {
-	return &UpstreamClient{
+func (kongAdminClient *kongAdminClient) Snis() SnisClient {
+	return &snisClient{
 		config: kongAdminClient.config,
 	}
 }
 
-func (kongAdminClient *KongAdminClient) Routes() *RouteClient {
-	return &RouteClient{
+func (kongAdminClient *kongAdminClient) Upstreams() UpstreamClient {
+	return &upstreamClient{
 		config: kongAdminClient.config,
 	}
 }
 
-func (kongAdminClient *KongAdminClient) Services() *ServiceClient {
-	return &ServiceClient{
+func (kongAdminClient *kongAdminClient) Routes() RouteClient {
+	return &routeClient{
 		config: kongAdminClient.config,
 	}
 }
 
-func (kongAdminClient *KongAdminClient) Targets() *TargetClient {
-	return &TargetClient{
+func (kongAdminClient *kongAdminClient) Services() ServiceClient {
+	return &serviceClient{
+		config: kongAdminClient.config,
+	}
+}
+
+func (kongAdminClient *kongAdminClient) Targets() TargetClient {
+	return &targetClient{
+		config: kongAdminClient.config,
+	}
+}
+
+func (kongAdminClient *kongAdminClient) Workspaces() WorkspaceClient {
+	return &workspaceClient{
 		config: kongAdminClient.config,
 	}
 }
