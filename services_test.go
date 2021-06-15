@@ -325,7 +325,7 @@ func Test_ServicesPluginConfigs(t *testing.T) {
 		assert.Nil(t, err)
 	}
 
-	retrievedPluginConfig, err = client.Services().GetPluginConfigs(createdService.Id, "jwt")
+	retrievedPluginConfig, err = client.Services().GetPluginConfigs(*createdService.Id, "jwt")
 	assert.Nil(t, retrievedPluginConfig)
 	assert.Nil(t, err)
 
