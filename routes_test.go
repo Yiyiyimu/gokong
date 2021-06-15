@@ -568,19 +568,19 @@ func Test_RoutesPluginConfig(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotNil(t, plugin)
 
-	createdPluginConfig, err := client.Routes().CreatePluginConfig(createdRoute.Id, "jwt", "{\"key\": \"a36c3049b36249a3c9f8891cb127243c\"}")
+	createdPluginConfig, err := client.Routes().CreatePluginConfig(*createdRoute.Id, "jwt", "{\"key\": \"a36c3049b36249a3c9f8891cb127243c\"}")
 	assert.Nil(t, err)
 	assert.NotNil(t, createdPluginConfig)
 	assert.NotEqual(t, "", createdPluginConfig.Id)
 	assert.Contains(t, createdPluginConfig.Body, "a36c3049b36249a3c9f8891cb127243c")
 
-	retrievedPluginConfig, err := client.Routes().GetPluginConfig(createdRoute.Id, "jwt", createdPluginConfig.Id)
+	retrievedPluginConfig, err := client.Routes().GetPluginConfig(*createdRoute.Id, "jwt", createdPluginConfig.Id)
 	assert.Nil(t, err)
 
-	err = client.Routes().DeletePluginConfig(createdRoute.Id, "jwt", createdPluginConfig.Id)
+	err = client.Routes().DeletePluginConfig(*createdRoute.Id, "jwt", createdPluginConfig.Id)
 	assert.Nil(t, err)
 
-	retrievedPluginConfig, err = client.Routes().GetPluginConfig(createdRoute.Id, "jwt", createdPluginConfig.Id)
+	retrievedPluginConfig, err = client.Routes().GetPluginConfig(*createdRoute.Id, "jwt", createdPluginConfig.Id)
 	assert.Nil(t, retrievedPluginConfig)
 	assert.Nil(t, err)
 
@@ -629,30 +629,30 @@ func Test_RoutesPluginConfigs(t *testing.T) {
 	assert.NotNil(t, plugin)
 
 	pluginConfigs := []*RoutePluginConfig{}
-	createdPluginConfig, err := client.Routes().CreatePluginConfig(createdRoute.Id, "jwt", "{\"key\": \"a36c3049b36249a3c9f8891cb127243c\"}")
+	createdPluginConfig, err := client.Routes().CreatePluginConfig(*createdRoute.Id, "jwt", "{\"key\": \"a36c3049b36249a3c9f8891cb127243c\"}")
 	assert.Nil(t, err)
 	assert.NotNil(t, createdPluginConfig)
 	assert.NotEqual(t, "", createdPluginConfig.Id)
 	assert.Contains(t, createdPluginConfig.Body, "a36c3049b36249a3c9f8891cb127243c")
 	pluginConfigs = append(pluginConfigs, createdPluginConfig)
 
-	createdPluginConfig, err = client.Routes().CreatePluginConfig(createdRoute.Id, "jwt", "{\"key\": \"b32598eb4009be949dd42daa35beb6ddee8d83e9\"}")
+	createdPluginConfig, err = client.Routes().CreatePluginConfig(*createdRoute.Id, "jwt", "{\"key\": \"b32598eb4009be949dd42daa35beb6ddee8d83e9\"}")
 	assert.Nil(t, err)
 	assert.NotNil(t, createdPluginConfig)
 	assert.NotEqual(t, "", createdPluginConfig.Id)
 	assert.Contains(t, createdPluginConfig.Body, "b32598eb4009be949dd42daa35beb6ddee8d83e9")
 	pluginConfigs = append(pluginConfigs, createdPluginConfig)
 
-	retrievedPluginConfig, err := client.Routes().GetPluginConfigs(createdRoute.Id, "jwt")
+	retrievedPluginConfig, err := client.Routes().GetPluginConfigs(*createdRoute.Id, "jwt")
 	assert.Nil(t, err)
 	assert.Len(t, retrievedPluginConfig, 2)
 
 	for _, pluginConfig := range pluginConfigs {
-		err = client.Routes().DeletePluginConfig(createdRoute.Id, "jwt", pluginConfig.Id)
+		err = client.Routes().DeletePluginConfig(*createdRoute.Id, "jwt", pluginConfig.Id)
 		assert.Nil(t, err)
 	}
 
-	retrievedPluginConfig, err = client.Routes().GetPluginConfigs(createdRoute.Id, "jwt")
+	retrievedPluginConfig, err = client.Routes().GetPluginConfigs(*createdRoute.Id, "jwt")
 	assert.Nil(t, retrievedPluginConfig)
 	assert.Nil(t, err)
 
