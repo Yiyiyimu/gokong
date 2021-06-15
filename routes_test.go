@@ -528,9 +528,28 @@ func Test_UpateRouteShouldReturnErrorWhenBadRequest(t *testing.T) {
 }
 
 func Test_RoutesPluginConfig(t *testing.T) {
+	serviceRequest := &ServiceRequest{
+		Name:     String("service-name" + uuid.NewV4().String()),
+		Protocol: String("http"),
+		Host:     String("foo.com"),
+	}
+
+	client := NewClient(NewDefaultConfig())
+
+	createdService, err := client.Services().Create(serviceRequest)
+
+	assert.Nil(t, err)
+	assert.NotNil(t, createdService)
+
 	routeRequest := &RouteRequest{
-		Username: "username-" + uuid.NewV4().String(),
-		CustomId: "test-" + uuid.NewV4().String(),
+		Protocols:    StringSlice([]string{"http"}),
+		Methods:      StringSlice([]string{"GET"}),
+		Hosts:        StringSlice([]string{"foo.com"}),
+		Paths:        StringSlice([]string{"/bar"}),
+		StripPath:    Bool(true),
+		PreserveHost: Bool(true),
+		Service:      ToId(*createdService.Id),
+		Tags:         []*string{String("my-tag")},
 	}
 
 	client := NewClient(NewDefaultConfig())
@@ -570,10 +589,30 @@ func Test_RoutesPluginConfig(t *testing.T) {
 }
 
 func Test_RoutesPluginConfigs(t *testing.T) {
-	routeRequest := &RouteRequest{
-		Username: "username-" + uuid.NewV4().String(),
-		CustomId: "test-" + uuid.NewV4().String(),
+	serviceRequest := &ServiceRequest{
+		Name:     String("service-name" + uuid.NewV4().String()),
+		Protocol: String("http"),
+		Host:     String("foo.com"),
 	}
+
+	client := NewClient(NewDefaultConfig())
+
+	createdService, err := client.Services().Create(serviceRequest)
+
+	assert.Nil(t, err)
+	assert.NotNil(t, createdService)
+
+	routeRequest := &RouteRequest{
+		Protocols:    StringSlice([]string{"http"}),
+		Methods:      StringSlice([]string{"GET"}),
+		Hosts:        StringSlice([]string{"foo.com"}),
+		Paths:        StringSlice([]string{"/bar"}),
+		StripPath:    Bool(true),
+		PreserveHost: Bool(true),
+		Service:      ToId(*createdService.Id),
+		Tags:         []*string{String("my-tag")},
+	}
+
 	client := NewClient(NewDefaultConfig())
 	createdRoute, err := client.Routes().Create(routeRequest)
 	assert.Nil(t, err)

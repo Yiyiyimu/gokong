@@ -239,8 +239,9 @@ func Test_UpdateShouldRerturnErrorWhenBadRequest(t *testing.T) {
 
 func Test_ServicesPluginConfig(t *testing.T) {
 	serviceRequest := &ServiceRequest{
-		Username: "username-" + uuid.NewV4().String(),
-		CustomId: "test-" + uuid.NewV4().String(),
+		Name:     String(fmt.Sprintf("service-name-%s", uuid.NewV4().String())),
+		Protocol: String("http"),
+		Host:     String("foo.com"),
 	}
 
 	client := NewClient(NewDefaultConfig())
@@ -281,8 +282,9 @@ func Test_ServicesPluginConfig(t *testing.T) {
 
 func Test_ServicesPluginConfigs(t *testing.T) {
 	serviceRequest := &ServiceRequest{
-		Username: "username-" + uuid.NewV4().String(),
-		CustomId: "test-" + uuid.NewV4().String(),
+		Name:     String(fmt.Sprintf("service-name-%s", uuid.NewV4().String())),
+		Protocol: String("http"),
+		Host:     String("foo.com"),
 	}
 	client := NewClient(NewDefaultConfig())
 	createdService, err := client.Services().Create(serviceRequest)
