@@ -260,19 +260,19 @@ func Test_ServicesPluginConfig(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotNil(t, plugin)
 
-	createdPluginConfig, err := client.Services().CreatePluginConfig(createdService.Id, "jwt", "{\"key\": \"a36c3049b36249a3c9f8891cb127243c\"}")
+	createdPluginConfig, err := client.Services().CreatePluginConfig(*createdService.Id, "jwt", "{\"key\": \"a36c3049b36249a3c9f8891cb127243c\"}")
 	assert.Nil(t, err)
 	assert.NotNil(t, createdPluginConfig)
 	assert.NotEqual(t, "", createdPluginConfig.Id)
 	assert.Contains(t, createdPluginConfig.Body, "a36c3049b36249a3c9f8891cb127243c")
 
-	retrievedPluginConfig, err := client.Services().GetPluginConfig(createdService.Id, "jwt", createdPluginConfig.Id)
+	retrievedPluginConfig, err := client.Services().GetPluginConfig(*createdService.Id, "jwt", createdPluginConfig.Id)
 	assert.Nil(t, err)
 
-	err = client.Services().DeletePluginConfig(createdService.Id, "jwt", createdPluginConfig.Id)
+	err = client.Services().DeletePluginConfig(*createdService.Id, "jwt", createdPluginConfig.Id)
 	assert.Nil(t, err)
 
-	retrievedPluginConfig, err = client.Services().GetPluginConfig(createdService.Id, "jwt", createdPluginConfig.Id)
+	retrievedPluginConfig, err = client.Services().GetPluginConfig(*createdService.Id, "jwt", createdPluginConfig.Id)
 	assert.Nil(t, retrievedPluginConfig)
 	assert.Nil(t, err)
 
@@ -302,26 +302,26 @@ func Test_ServicesPluginConfigs(t *testing.T) {
 	assert.NotNil(t, plugin)
 
 	pluginConfigs := []*ServicePluginConfig{}
-	createdPluginConfig, err := client.Services().CreatePluginConfig(createdService.Id, "jwt", "{\"key\": \"a36c3049b36249a3c9f8891cb127243c\"}")
+	createdPluginConfig, err := client.Services().CreatePluginConfig(*createdService.Id, "jwt", "{\"key\": \"a36c3049b36249a3c9f8891cb127243c\"}")
 	assert.Nil(t, err)
 	assert.NotNil(t, createdPluginConfig)
 	assert.NotEqual(t, "", createdPluginConfig.Id)
 	assert.Contains(t, createdPluginConfig.Body, "a36c3049b36249a3c9f8891cb127243c")
 	pluginConfigs = append(pluginConfigs, createdPluginConfig)
 
-	createdPluginConfig, err = client.Services().CreatePluginConfig(createdService.Id, "jwt", "{\"key\": \"b32598eb4009be949dd42daa35beb6ddee8d83e9\"}")
+	createdPluginConfig, err = client.Services().CreatePluginConfig(*createdService.Id, "jwt", "{\"key\": \"b32598eb4009be949dd42daa35beb6ddee8d83e9\"}")
 	assert.Nil(t, err)
 	assert.NotNil(t, createdPluginConfig)
 	assert.NotEqual(t, "", createdPluginConfig.Id)
 	assert.Contains(t, createdPluginConfig.Body, "b32598eb4009be949dd42daa35beb6ddee8d83e9")
 	pluginConfigs = append(pluginConfigs, createdPluginConfig)
 
-	retrievedPluginConfig, err := client.Services().GetPluginConfigs(createdService.Id, "jwt")
+	retrievedPluginConfig, err := client.Services().GetPluginConfigs(*createdService.Id, "jwt")
 	assert.Nil(t, err)
 	assert.Len(t, retrievedPluginConfig, 2)
 
 	for _, pluginConfig := range pluginConfigs {
-		err = client.Services().DeletePluginConfig(createdService.Id, "jwt", pluginConfig.Id)
+		err = client.Services().DeletePluginConfig(*createdService.Id, "jwt", pluginConfig.Id)
 		assert.Nil(t, err)
 	}
 

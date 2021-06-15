@@ -552,7 +552,6 @@ func Test_RoutesPluginConfig(t *testing.T) {
 		Tags:         []*string{String("my-tag")},
 	}
 
-	client := NewClient(NewDefaultConfig())
 	createdRoute, err := client.Routes().Create(routeRequest)
 	assert.Nil(t, err)
 	assert.NotNil(t, createdRoute)
@@ -613,7 +612,6 @@ func Test_RoutesPluginConfigs(t *testing.T) {
 		Tags:         []*string{String("my-tag")},
 	}
 
-	client := NewClient(NewDefaultConfig())
 	createdRoute, err := client.Routes().Create(routeRequest)
 	assert.Nil(t, err)
 	assert.NotNil(t, createdRoute)

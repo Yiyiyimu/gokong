@@ -127,7 +127,7 @@ func (targetClient *targetClient) DeleteFromUpstreamById(upstreamNameOrId string
 	}
 
 	if r.StatusCode != 204 {
-		return fmt.Errorf("Received unexpected response status code: %d. Body: %s", r.StatusCode, body)
+		return fmt.Errorf("received unexpected response status code: %d. Body: %s", r.StatusCode, body)
 	}
 
 	return nil
@@ -148,7 +148,7 @@ func (targetClient *targetClient) SetTargetFromUpstreamByIdAsHealthy(upstreamNam
 	}
 
 	if r.StatusCode != 204 {
-		return fmt.Errorf("Received unexpected response status code: %d. Body: %s", r.StatusCode, body)
+		return fmt.Errorf("received unexpected response status code: %d. Body: %s", r.StatusCode, body)
 	}
 
 	return nil
@@ -169,7 +169,7 @@ func (targetClient *targetClient) SetTargetFromUpstreamByIdAsUnhealthy(upstreamN
 	}
 
 	if r.StatusCode != 204 {
-		return fmt.Errorf("Received unexpected response status code: %d. Body: %s", r.StatusCode, body)
+		return fmt.Errorf("received unexpected response status code: %d. Body: %s", r.StatusCode, body)
 	}
 
 	return nil
