@@ -16,6 +16,10 @@ type RouteClient interface {
 	UpdateById(id string, routeRequest *RouteRequest) (*Route, error)
 	DeleteByName(name string) error
 	DeleteById(id string) error
+	CreatePluginConfig(routeId string, pluginName string, pluginConfig string) (*RoutePluginConfig, error)
+	GetPluginConfig(routeId string, pluginName string, id string) (*RoutePluginConfig, error)
+	GetPluginConfigs(routeId string, pluginName string) ([]map[string]interface{}, error)
+	DeletePluginConfig(routeId string, pluginName string, id string) error
 }
 
 type routeClient struct {
@@ -71,6 +75,17 @@ type Routes struct {
 type RouteQueryString struct {
 	Offset string `json:"offset,omitempty"`
 	Size   int    `json:"size"`
+}
+
+type RoutePluginConfig struct {
+	Id   string `json:"id,omitempty" yaml:"id,omitempty"`
+	Body string
+}
+
+type RoutePluginConfigs struct {
+	Data   []map[string]interface{} `json:"data,omitempty" yaml:"data,omitempty"`
+	Next   string                   `json:"next,omitempty" yaml:"next,omitempty"`
+	Offset string                   `json:"offset,omitempty" yaml:"offset,omitempty"`
 }
 
 const RoutesPath = "/routes/"
@@ -241,6 +256,91 @@ func (routeClient *routeClient) DeleteById(id string) error {
 	r, body, errs := newDelete(routeClient.config, RoutesPath+id).End()
 	if errs != nil {
 		return fmt.Errorf("could not delete the route, result: %v error: %v", r, errs)
+	}
+
+	if r.StatusCode == 401 || r.StatusCode == 403 {
+		return fmt.Errorf("not authorised, message from kong: %s", body)
+	}
+
+	return nil
+}
+
+func (routeClient *routeClient) CreatePluginConfig(routeId string, pluginName string, pluginConfig string) (*RoutePluginConfig, error) {
+	r, body, errs := newPost(routeClient.config, RoutesPath+routeId+"/"+pluginName).Send(pluginConfig).End()
+	if errs != nil {
+		return nil, fmt.Errorf("could not configure plugin for route, error: %v", errs)
+	}
+
+	if r.StatusCode == 401 || r.StatusCode == 403 {
+		return nil, fmt.Errorf("not authorised, message from kong: %s", body)
+	}
+
+	createdRoutePluginConfig := &RoutePluginConfig{}
+	err := json.Unmarshal([]byte(body), createdRoutePluginConfig)
+	if err != nil {
+		return nil, fmt.Errorf("could not parse route plugin config created response, error: %v", err)
+	}
+
+	if createdRoutePluginConfig.Id == "" {
+		return nil, fmt.Errorf("could not create route plugin config, error: %v", body)
+	}
+
+	createdRoutePluginConfig.Body = body
+
+	return createdRoutePluginConfig, nil
+}
+
+func (routeClient *routeClient) GetPluginConfig(routeId string, pluginName string, id string) (*RoutePluginConfig, error) {
+	r, body, errs := newGet(routeClient.config, RoutesPath+routeId+"/"+pluginName+"/"+id).End()
+	if errs != nil {
+		return nil, fmt.Errorf("could not get plugin config for route, error: %v", errs)
+	}
+
+	if r.StatusCode == 401 || r.StatusCode == 403 {
+		return nil, fmt.Errorf("not authorised, message from kong: %s", body)
+	}
+
+	routePluginConfig := &RoutePluginConfig{}
+	err := json.Unmarshal([]byte(body), routePluginConfig)
+	if err != nil {
+		return nil, fmt.Errorf("could not parse route plugin config response, error: %v", err)
+	}
+
+	if routePluginConfig.Id == "" {
+		return nil, nil
+	}
+
+	routePluginConfig.Body = body
+
+	return routePluginConfig, nil
+}
+
+func (routeClient *routeClient) GetPluginConfigs(routeId string, pluginName string) ([]map[string]interface{}, error) {
+	r, body, errs := newGet(routeClient.config, RoutesPath+routeId+"/"+pluginName).End()
+	if errs != nil {
+		return nil, fmt.Errorf("could not get plugin config for route, error: %v", errs)
+	}
+
+	if r.StatusCode == 401 || r.StatusCode == 403 {
+		return nil, fmt.Errorf("not authorised, message from kong: %s", body)
+	}
+
+	routePluginConfigs := &RoutePluginConfigs{}
+	err := json.Unmarshal([]byte(body), routePluginConfigs)
+	if err != nil {
+		return nil, fmt.Errorf("could not parse route plugin config response, error: %v", err)
+	}
+	if len(routePluginConfigs.Data) == 0 {
+		return nil, nil
+	}
+
+	return routePluginConfigs.Data, nil
+}
+
+func (routeClient *routeClient) DeletePluginConfig(routeId string, pluginName string, id string) error {
+	r, body, errs := newDelete(routeClient.config, RoutesPath+routeId+"/"+pluginName+"/"+id).End()
+	if errs != nil {
+		return fmt.Errorf("could not delete plugin config for route, error: %v", errs)
 	}
 
 	if r.StatusCode == 401 || r.StatusCode == 403 {

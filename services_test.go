@@ -186,6 +186,17 @@ func Test_AllServiceEndpointsShouldReturnErrorWhenRequestUnauthorised(t *testing
 	assert.Nil(t, updatedService)
 	assert.NotNil(t, err)
 
+	createdPluginConfig, err := unauthorisedClient.Services().CreatePluginConfig(uuid.NewV4().String(), "jwt", "{\"key\": \"a36c3049b36249a3c9f8891cb127243c\"}")
+	assert.Nil(t, createdPluginConfig)
+	assert.NotNil(t, err)
+
+	pluginConfig, err := unauthorisedClient.Services().GetPluginConfig(uuid.NewV4().String(), "jwt", "id")
+	assert.Nil(t, pluginConfig)
+	assert.NotNil(t, err)
+
+	err = unauthorisedClient.Services().DeletePluginConfig(uuid.NewV4().String(), "jwt", "id")
+	assert.NotNil(t, err)
+
 }
 
 func Test_CreateShouldRerturnErrorWhenBadRequest(t *testing.T) {
@@ -223,5 +234,99 @@ func Test_UpdateShouldRerturnErrorWhenBadRequest(t *testing.T) {
 	assert.Contains(t, err.Error(), "schema violation (protocol: expected one of:")
 
 	err = client.Services().DeleteServiceById(*createdService.Id)
+	assert.Nil(t, err)
+}
+
+func Test_ServicesPluginConfig(t *testing.T) {
+	serviceRequest := &ServiceRequest{
+		Username: "username-" + uuid.NewV4().String(),
+		CustomId: "test-" + uuid.NewV4().String(),
+	}
+
+	client := NewClient(NewDefaultConfig())
+	createdService, err := client.Services().Create(serviceRequest)
+	assert.Nil(t, err)
+	assert.NotNil(t, createdService)
+
+	pluginRequest := &PluginRequest{
+		Name: "jwt",
+		Config: map[string]interface{}{
+			"claims_to_verify": []string{"exp"},
+		},
+	}
+
+	plugin, err := client.Plugins().Create(pluginRequest)
+	assert.Nil(t, err)
+	assert.NotNil(t, plugin)
+
+	createdPluginConfig, err := client.Services().CreatePluginConfig(createdService.Id, "jwt", "{\"key\": \"a36c3049b36249a3c9f8891cb127243c\"}")
+	assert.Nil(t, err)
+	assert.NotNil(t, createdPluginConfig)
+	assert.NotEqual(t, "", createdPluginConfig.Id)
+	assert.Contains(t, createdPluginConfig.Body, "a36c3049b36249a3c9f8891cb127243c")
+
+	retrievedPluginConfig, err := client.Services().GetPluginConfig(createdService.Id, "jwt", createdPluginConfig.Id)
+	assert.Nil(t, err)
+
+	err = client.Services().DeletePluginConfig(createdService.Id, "jwt", createdPluginConfig.Id)
+	assert.Nil(t, err)
+
+	retrievedPluginConfig, err = client.Services().GetPluginConfig(createdService.Id, "jwt", createdPluginConfig.Id)
+	assert.Nil(t, retrievedPluginConfig)
+	assert.Nil(t, err)
+
+	err = client.Plugins().DeleteById(plugin.Id)
+	assert.Nil(t, err)
+}
+
+func Test_ServicesPluginConfigs(t *testing.T) {
+	serviceRequest := &ServiceRequest{
+		Username: "username-" + uuid.NewV4().String(),
+		CustomId: "test-" + uuid.NewV4().String(),
+	}
+	client := NewClient(NewDefaultConfig())
+	createdService, err := client.Services().Create(serviceRequest)
+	assert.Nil(t, err)
+	assert.NotNil(t, createdService)
+
+	pluginRequest := &PluginRequest{
+		Name: "jwt",
+		Config: map[string]interface{}{
+			"claims_to_verify": []string{"exp"},
+		},
+	}
+	plugin, err := client.Plugins().Create(pluginRequest)
+	assert.Nil(t, err)
+	assert.NotNil(t, plugin)
+
+	pluginConfigs := []*ServicePluginConfig{}
+	createdPluginConfig, err := client.Services().CreatePluginConfig(createdService.Id, "jwt", "{\"key\": \"a36c3049b36249a3c9f8891cb127243c\"}")
+	assert.Nil(t, err)
+	assert.NotNil(t, createdPluginConfig)
+	assert.NotEqual(t, "", createdPluginConfig.Id)
+	assert.Contains(t, createdPluginConfig.Body, "a36c3049b36249a3c9f8891cb127243c")
+	pluginConfigs = append(pluginConfigs, createdPluginConfig)
+
+	createdPluginConfig, err = client.Services().CreatePluginConfig(createdService.Id, "jwt", "{\"key\": \"b32598eb4009be949dd42daa35beb6ddee8d83e9\"}")
+	assert.Nil(t, err)
+	assert.NotNil(t, createdPluginConfig)
+	assert.NotEqual(t, "", createdPluginConfig.Id)
+	assert.Contains(t, createdPluginConfig.Body, "b32598eb4009be949dd42daa35beb6ddee8d83e9")
+	pluginConfigs = append(pluginConfigs, createdPluginConfig)
+
+	retrievedPluginConfig, err := client.Services().GetPluginConfigs(createdService.Id, "jwt")
+	assert.Nil(t, err)
+	assert.Len(t, retrievedPluginConfig, 2)
+
+	for _, pluginConfig := range pluginConfigs {
+		err = client.Services().DeletePluginConfig(createdService.Id, "jwt", pluginConfig.Id)
+		assert.Nil(t, err)
+	}
+
+	retrievedPluginConfig, err = client.Services().GetPluginConfigs(createdService.Id, "jwt")
+	assert.Nil(t, retrievedPluginConfig)
+	assert.Nil(t, err)
+
+	err = client.Plugins().DeleteById(plugin.Id)
 	assert.Nil(t, err)
 }

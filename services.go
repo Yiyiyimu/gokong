@@ -16,6 +16,10 @@ type ServiceClient interface {
 	UpdateServicebyRouteId(id string, serviceRequest *ServiceRequest) (*Service, error)
 	DeleteServiceByName(name string) error
 	DeleteServiceById(id string) error
+	CreatePluginConfig(serviceId string, pluginName string, pluginConfig string) (*ServicePluginConfig, error)
+	GetPluginConfig(serviceId string, pluginName string, id string) (*ServicePluginConfig, error)
+	GetPluginConfigs(serviceId string, pluginName string) ([]map[string]interface{}, error)
+	DeletePluginConfig(serviceId string, pluginName string, id string) error
 }
 
 type serviceClient struct {
@@ -62,6 +66,17 @@ type Services struct {
 type ServiceQueryString struct {
 	Offset string `json:"offset,omitempty"`
 	Size   int    `json:"size"`
+}
+
+type ServicePluginConfig struct {
+	Id   string `json:"id,omitempty" yaml:"id,omitempty"`
+	Body string
+}
+
+type ServicePluginConfigs struct {
+	Data   []map[string]interface{} `json:"data,omitempty" yaml:"data,omitempty"`
+	Next   string                   `json:"next,omitempty" yaml:"next,omitempty"`
+	Offset string                   `json:"offset,omitempty" yaml:"offset,omitempty"`
 }
 
 const ServicesPath = "/services/"
@@ -246,4 +261,89 @@ func (serviceClient *serviceClient) updateService(requestPath string, serviceReq
 	}
 
 	return updatedService, nil
+}
+
+func (serviceClient *serviceClient) CreatePluginConfig(serviceId string, pluginName string, pluginConfig string) (*ServicePluginConfig, error) {
+	r, body, errs := newPost(serviceClient.config, ServicesPath+serviceId+"/"+pluginName).Send(pluginConfig).End()
+	if errs != nil {
+		return nil, fmt.Errorf("could not configure plugin for service, error: %v", errs)
+	}
+
+	if r.StatusCode == 401 || r.StatusCode == 403 {
+		return nil, fmt.Errorf("not authorised, message from kong: %s", body)
+	}
+
+	createdServicePluginConfig := &ServicePluginConfig{}
+	err := json.Unmarshal([]byte(body), createdServicePluginConfig)
+	if err != nil {
+		return nil, fmt.Errorf("could not parse service plugin config created response, error: %v", err)
+	}
+
+	if createdServicePluginConfig.Id == "" {
+		return nil, fmt.Errorf("could not create service plugin config, error: %v", body)
+	}
+
+	createdServicePluginConfig.Body = body
+
+	return createdServicePluginConfig, nil
+}
+
+func (serviceClient *serviceClient) GetPluginConfig(serviceId string, pluginName string, id string) (*ServicePluginConfig, error) {
+	r, body, errs := newGet(serviceClient.config, ServicesPath+serviceId+"/"+pluginName+"/"+id).End()
+	if errs != nil {
+		return nil, fmt.Errorf("could not get plugin config for service, error: %v", errs)
+	}
+
+	if r.StatusCode == 401 || r.StatusCode == 403 {
+		return nil, fmt.Errorf("not authorised, message from kong: %s", body)
+	}
+
+	servicePluginConfig := &ServicePluginConfig{}
+	err := json.Unmarshal([]byte(body), servicePluginConfig)
+	if err != nil {
+		return nil, fmt.Errorf("could not parse service plugin config response, error: %v", err)
+	}
+
+	if servicePluginConfig.Id == "" {
+		return nil, nil
+	}
+
+	servicePluginConfig.Body = body
+
+	return servicePluginConfig, nil
+}
+
+func (serviceClient *serviceClient) GetPluginConfigs(serviceId string, pluginName string) ([]map[string]interface{}, error) {
+	r, body, errs := newGet(serviceClient.config, ServicesPath+serviceId+"/"+pluginName).End()
+	if errs != nil {
+		return nil, fmt.Errorf("could not get plugin config for service, error: %v", errs)
+	}
+
+	if r.StatusCode == 401 || r.StatusCode == 403 {
+		return nil, fmt.Errorf("not authorised, message from kong: %s", body)
+	}
+
+	servicePluginConfigs := &ServicePluginConfigs{}
+	err := json.Unmarshal([]byte(body), servicePluginConfigs)
+	if err != nil {
+		return nil, fmt.Errorf("could not parse service plugin config response, error: %v", err)
+	}
+	if len(servicePluginConfigs.Data) == 0 {
+		return nil, nil
+	}
+
+	return servicePluginConfigs.Data, nil
+}
+
+func (serviceClient *serviceClient) DeletePluginConfig(serviceId string, pluginName string, id string) error {
+	r, body, errs := newDelete(serviceClient.config, ServicesPath+serviceId+"/"+pluginName+"/"+id).End()
+	if errs != nil {
+		return fmt.Errorf("could not delete plugin config for service, error: %v", errs)
+	}
+
+	if r.StatusCode == 401 || r.StatusCode == 403 {
+		return fmt.Errorf("not authorised, message from kong: %s", body)
+	}
+
+	return nil
 }
